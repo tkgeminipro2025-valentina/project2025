@@ -2,9 +2,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const processEnv = typeof process !== 'undefined' ? process.env : undefined;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "your_supabase_url";
+const supabaseUrl = process.env.NEXT_PUBLIC_VITE_SUPABASE_URL || "your_supabase_url";
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "your_supabase_anon_key";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_VITE_SUPABASE_ANON_KEY || "your_supabase_anon_key";
 
 console.log('Supabase URL:', supabaseUrl);
 console.log('Supabase Anon Key:', supabaseAnonKey);
