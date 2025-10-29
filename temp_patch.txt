@@ -1,0 +1,15 @@
+*** Begin Patch
+*** Update File: components/KnowledgeBaseAdmin.tsx
+@@
+-        setIsSubmitting(true);
+-        try {
+-            await createManualKnowledgeEntry({\n                title: trimmedTitle,\n                description: formState.description.trim() || undefined,\n                content: trimmedContent,\n                sourceType: 'manual',\n            });
++        setIsSubmitting(true);
++        try {
++            await createManualKnowledgeEntry({
++                title: trimmedTitle,
++                description: formState.description.trim() || undefined,
++                content: trimmedContent,
++                sourceType: 'manual',
++            });
+*** End Patch
