@@ -1,69 +1,29 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const processEnv = typeof process !== 'undefined' ? process.env : undefined;
+// ❶ Đọc env (không có default)
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const rawKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "your_supabase_url";
+// ❷ Validate chắc cú
+const isValidUrl = !!rawUrl && /^https?:\/\/.+/i.test(rawUrl);
+const isValidKey = !!rawKey && rawKey.length > 20; // (thường bắt đầu bằng 'eyJ', JWT dài)
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "your_supabase_anon_key";
+const isSupabaseConfigured = isValidUrl && isValidKey;
 
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Anon Key:', supabaseAnonKey);
-const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-
-const createNotConfiguredError = () =>
-    new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
-
-const createRejectedPromise = <T>() =>
-    Promise.reject<T>(createNotConfiguredError());
-
-const createMockQueryBuilder = (): any => {
-    const builder: any = {
-        order: () => createRejectedPromise(),
-        single: () => createRejectedPromise(),
-        eq: () => builder,
-        select: () => builder,
-        then: (...args: any[]) => createRejectedPromise().then(...args),
-        catch: (...args: any[]) => createRejectedPromise().catch(...args),
-        finally: (...args: any[]) => createRejectedPromise().finally(...args),
-    };
-    return builder;
-};
-
-const createMockTableApi = () => {
-    const builder = createMockQueryBuilder();
-    return {
-        select: () => builder,
-        insert: () => ({
-            select: () => builder,
-        }),
-        update: () => ({
-            eq: () => ({
-                select: () => builder,
-            }),
-        }),
-        eq: () => builder,
-    };
-};
-
-const createMockSupabaseClient = (): SupabaseClient<any, any, any> => {
-    const mock = {
-        from: () => createMockTableApi(),
-        functions: {
-            invoke: async () => ({ data: null, error: createNotConfiguredError() }),
-        },
-    };
-
-    return mock as unknown as SupabaseClient<any, any, any>;
-};
-
-if (!isSupabaseConfigured) {
-    console.warn('Supabase environment variables are not set. Falling back to mock client.');
+function notConfiguredErr() {
+  return new Error(
+    'Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel.'
+  );
 }
 
-export const supabase: SupabaseClient<any, any, any> = isSupabaseConfigured
-  ? createClient(supabaseUrl!, supabaseAnonKey!, {
-      auth: { autoRefreshToken: true, persistSession: true },
-    })
-  : createMockSupabaseClient();
+const mock = (() => {
+  const reject = <T>() => Promise.reject<T>(notConfiguredErr());
+  const qb: any = { order: reject, single: reject, eq: () => qb, select: () => qb, then: (...a:any[])=>reject().then(...a) };
+  return { from: () => ({ select: () => qb }), auth: { onAuthStateChange: () => ({ data: { subscription: { unsubscribe(){} } } }) } } as any;
+})();
+
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(rawUrl!, rawKey!, { auth: { autoRefreshToken: true, persistSession: true } })
+  : (console.warn('[Supabase] Env missing → using mock client'), mock);
 
 export { isSupabaseConfigured };
