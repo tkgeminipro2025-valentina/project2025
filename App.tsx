@@ -255,7 +255,7 @@ const App: React.FC = () => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [loadUserProfile, supabase]);
+  }, [loadUserProfile, supabase, isSupabaseConfigured]);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
