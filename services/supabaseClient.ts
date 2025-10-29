@@ -1,87 +1,28 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const processEnv = typeof process !== 'undefined' ? process.env : undefined;
+// Ưu tiên tên chuẩn Next.js; fallback các biến Supabase gợi ý và Vite
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_VITE_SUPABASE_URL;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_VITE_SUPABASE_URL || "your_supabase_url";
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||                           // tên "kinh điển"
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||                    // vài dự án dùng tên này
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||            // đúng như Studio đang gợi ý
+  process.env.NEXT_PUBLIC_VITE_SUPABASE_ANON_KEY;                        // nếu lỡ dùng Vite trước đây
 
-const supabaseAnonKey = process.env.NEXT_PUBLIC_VITE_SUPABASE_ANON_KEY || "your_supabase_anon_key";
-
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Anon Key:', supabaseAnonKey);
 const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const createNotConfiguredError = () =>
-    new Error('Supabase is not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  new Error('Missing Supabase envs: set NEXT_PUBLIC_SUPABASE_URL and a public key (ANON/PUBLISHABLE).');
 
-const createRejectedPromise = <T>() =>
-    Promise.reject<T>(createNotConfiguredError());
+const createMockSupabaseClient = (): SupabaseClient<any, any, any> =>
+  ({ from: () => ({ select: () => Promise.reject(createNotConfiguredError()) }) } as any);
 
-const createMockQueryBuilder = (): any => {
-    const builder: any = {
-        order: () => createRejectedPromise(),
-        single: () => createRejectedPromise(),
-        eq: () => builder,
-        select: () => builder,
-        then: (...args: any[]) => createRejectedPromise().then(...args),
-        catch: (...args: any[]) => createRejectedPromise().catch(...args),
-        finally: (...args: any[]) => createRejectedPromise().finally(...args),
-    };
-    return builder;
-};
-
-const createMockTableApi = () => {
-    const builder = createMockQueryBuilder();
-    return {
-        select: () => builder,
-        insert: () => ({
-            select: () => builder,
-        }),
-        update: () => ({
-            eq: () => ({
-                select: () => builder,
-            }),
-        }),
-        eq: () => builder,
-    };
-};
-
-const createMockSupabaseClient = (): SupabaseClient<any, any, any> => {
-    const mock = {
-        from: () => createMockTableApi(),
-        functions: {
-            invoke: async () => ({ data: null, error: createNotConfiguredError() }),
-        },
-    };
-
-    return mock as unknown as SupabaseClient<any, any, any>;
-};
-
-if (!isSupabaseConfigured) {
-    console.warn('Supabase environment variables are not set. Falling back to mock client.');
-}
-
-export const supabase: SupabaseClient<any, any, any> = (() => {
-    console.log('Supabase: isSupabaseConfigured', isSupabaseConfigured);
-    console.log('Supabase: supabaseUrl', supabaseUrl);
-    console.log('Supabase: supabaseAnonKey', supabaseAnonKey);
-    return isSupabaseConfigured
-        ? (() => {
-            console.log('Supabase: Creating Supabase client');
-                        try {
-                            const client = createClient(supabaseUrl, supabaseAnonKey, {
-                              auth: {
-                                autoRefreshToken: true,
-                                persistSession: true,
-                              },
-                            });
-                            console.log('Supabase: Supabase client created successfully');
-                            return client;
-                        } catch (error) {
-                            console.error('Supabase: Error creating Supabase client', error);
-                            return createMockSupabaseClient();
-                        }
-        })()
-        : createMockSupabaseClient();
-    })();
+export const supabase: SupabaseClient<any, any, any> = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!, {
+      auth: { autoRefreshToken: true, persistSession: true },
+    })
+  : createMockSupabaseClient();
 
 export { isSupabaseConfigured };
