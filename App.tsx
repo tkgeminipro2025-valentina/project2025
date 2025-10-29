@@ -219,15 +219,17 @@ const App: React.FC = () => {
     let isMounted = true;
     (async () => {
       try {
+        console.log('App: Initializing auth session...');
         const { data, error } = await supabase.auth.getSession();
         if (!isMounted) return;
         if (error) throw error;
+        console.log('App: Auth session initialized successfully:', data);
         setSession(data?.session ?? null);
         if (data?.session) {
           await loadUserProfile();
         }
       } catch (err) {
-        console.error('Failed to initialise auth session:', err);
+        console.error('App: Failed to initialise auth session:', err);
         if (isMounted) {
           setAuthError('Khong the khoi tao phien dang nhap. Vui long thu lai.');
         }
@@ -239,6 +241,7 @@ const App: React.FC = () => {
     })();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      console.log('App: Auth state changed:', _event, newSession);
       setSession(newSession);
       if (newSession) {
         await loadUserProfile();
@@ -252,7 +255,7 @@ const App: React.FC = () => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [loadUserProfile]);
+  }, [loadUserProfile, supabase]);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
